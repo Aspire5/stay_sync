@@ -54,8 +54,10 @@ import { CalendarStore } from '../../stores/calendar.store';
         [dateRangeText]="store.formattedSelectedRange()"
         [errorMessage]="store.errorMessage()"
         [isLoading]="store.isLoading()"
+        [existingReservations]="store.selectedReservations()"
         (onClose)="store.closeDrawer()"
         (onCreateBooking)="handleCreateBooking($event)"
+        (onCancelBooking)="handleCancelBooking($event)"
         (onSetPrice)="handleSetPrice($event)"
         (onBlockDates)="handleBlockDates($event)"
         (onUnblockDates)="handleUnblockDates($event)"
@@ -107,6 +109,10 @@ export class CalendarDashboardComponent {
 
   handleCreateBooking(event: { guestName: string; checkIn: string; checkOut: string }): void {
     this.store.createBooking(event.guestName, event.checkIn, event.checkOut);
+  }
+
+  handleCancelBooking(id: string): void {
+    this.store.cancelBooking(id);
   }
 
   handleSetPrice(event: { startDate: string; endDate: string; price: number }): void {

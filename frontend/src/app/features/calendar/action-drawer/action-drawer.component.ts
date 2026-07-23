@@ -19,7 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTabsModule } from '@angular/material/tabs';
-import { DateRangeSelection } from '../../../models/calendar.model';
+import { DateRangeSelection, UnitReservation } from '../../../models/calendar.model';
 import { DrawerState } from '../../../stores/calendar.store';
 
 @Component({
@@ -59,7 +59,7 @@ import { DrawerState } from '../../../stores/calendar.store';
       <div *ngIf="errorMessage" class="error-banner">
         <mat-icon class="error-icon">warning</mat-icon>
         <div class="error-content">
-          <strong>Booking Clash / Error</strong>
+          <strong>Validation / Clash Alert</strong>
           <p>{{ errorMessage }}</p>
         </div>
       </div>
@@ -71,10 +71,51 @@ import { DrawerState } from '../../../stores/calendar.store';
         class="custom-tabs"
         mat-stretch-tabs="false"
       >
-        <!-- Tab 1: Create Booking -->
-        <mat-tab label="New Booking">
-          <form [formGroup]="bookingForm" (ngSubmit)="submitBooking()" class="drawer-form">
-            <div class="form-section">
+        <!-- Tab 1: Booking Management -->
+        <mat-tab label="Booking">
+          <div class="drawer-form">
+            <!-- Active Bookings Read-Only Cards -->
+            <div *ngIf="activeBookings.length > 0" class="existing-cards-section">
+              <h3 class="section-heading">Existing Active Reservation</h3>
+              <div *ngFor="let res of activeBookings" class="detail-card booking-card">
+                <div class="card-header">
+                  <span class="card-title">
+                    <mat-icon class="inline-icon">person</mat-icon> {{ res.guestName }}
+                  </span>
+                  <span class="badge source-badge">{{ res.source }}</span>
+                </div>
+                <div class="card-body">
+                  <div class="info-row">
+                    <span>Check In:</span> <strong>{{ res.checkIn }}</strong>
+                  </div>
+                  <div class="info-row">
+                    <span>Check Out:</span> <strong>{{ res.checkOut }} (Morning)</strong>
+                  </div>
+                  <div class="info-row">
+                    <span>Status:</span> <strong class="text-success">{{ res.status }}</strong>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button
+                    mat-stroked-button
+                    color="warn"
+                    type="button"
+                    (click)="onCancelBooking.emit(res.id)"
+                    [disabled]="isLoading"
+                    class="full-width"
+                  >
+                    <mat-icon>cancel</mat-icon> Cancel Existing Booking
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- New Booking Form (If unit available or user adding booking) -->
+            <form [formGroup]="bookingForm" (ngSubmit)="submitBooking()" class="form-section">
+              <h3 class="section-heading" *ngIf="activeBookings.length > 0">
+                Create Additional Booking (If Unit Available)
+              </h3>
+
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Guest Name</mat-label>
                 <input
@@ -103,31 +144,31 @@ import { DrawerState } from '../../../stores/calendar.store';
 
               <div class="summary-box">
                 <div class="summary-row">
-                  <span>Checkout Rule:</span>
+                  <span>Checkout Convention:</span>
                   <strong>Exclusive Check-out</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Guest departs:</span>
+                  <span>Guest Departs:</span>
                   <strong>{{ bookingForm.value.checkOut || 'Selected Date' }} morning</strong>
                 </div>
               </div>
-            </div>
 
-            <div class="drawer-footer">
-              <button mat-stroked-button type="button" (click)="onClose.emit()">
-                Cancel
-              </button>
-              <button
-                mat-raised-button
-                color="primary"
-                type="submit"
-                [disabled]="bookingForm.invalid || isLoading"
-                class="primary-submit-btn"
-              >
-                Confirm Booking
-              </button>
-            </div>
-          </form>
+              <div class="drawer-footer">
+                <button mat-stroked-button type="button" (click)="onClose.emit()">
+                  Cancel
+                </button>
+                <button
+                  mat-raised-button
+                  color="primary"
+                  type="submit"
+                  [disabled]="bookingForm.invalid || isLoading"
+                  class="primary-submit-btn"
+                >
+                  Confirm New Booking
+                </button>
+              </div>
+            </form>
+          </div>
         </mat-tab>
 
         <!-- Tab 2: Override Price -->
@@ -182,9 +223,46 @@ import { DrawerState } from '../../../stores/calendar.store';
 
         <!-- Tab 3: Block / Unblock Range -->
         <mat-tab label="Block / Unblock">
-          <form [formGroup]="blockForm" class="drawer-form">
-            <div class="form-section">
-              <p class="section-desc">
+          <div class="drawer-form">
+            <!-- Active Blocks Read-Only Details Cards -->
+            <div *ngIf="activeBlocks.length > 0" class="existing-cards-section">
+              <h3 class="section-heading">Active Block Details</h3>
+              <div *ngFor="let block of activeBlocks" class="detail-card block-card">
+                <div class="card-header">
+                  <span class="card-title">
+                    <mat-icon class="inline-icon">block</mat-icon> {{ block.guestName }}
+                  </span>
+                  <span class="badge block-badge">BLOCKED</span>
+                </div>
+                <div class="card-body">
+                  <div class="info-row">
+                    <span>Check In:</span> <strong>{{ block.checkIn }}</strong>
+                  </div>
+                  <div class="info-row">
+                    <span>Check Out:</span> <strong>{{ block.checkOut }}</strong>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button
+                    mat-stroked-button
+                    color="warn"
+                    type="button"
+                    (click)="submitUnblock()"
+                    [disabled]="isLoading"
+                    class="full-width"
+                  >
+                    <mat-icon>lock_open</mat-icon> Unblock Selected Nights
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Block Form (If unblocked) -->
+            <form [formGroup]="blockForm" class="form-section">
+              <h3 class="section-heading" *ngIf="activeBlocks.length > 0">
+                Block Additional Date Range
+              </h3>
+              <p class="section-desc" *ngIf="activeBlocks.length === 0">
                 Select a single date or date range to block nights or release existing blocks.
               </p>
 
@@ -209,30 +287,30 @@ import { DrawerState } from '../../../stores/calendar.store';
                 />
                 <mat-icon matSuffix class="field-icon">sticky_note_2</mat-icon>
               </mat-form-field>
-            </div>
 
-            <div class="drawer-footer block-actions">
-              <button
-                mat-stroked-button
-                color="warn"
-                type="button"
-                (click)="submitUnblock()"
-                [disabled]="blockForm.invalid || isLoading"
-              >
-                <mat-icon>lock_open</mat-icon> Unblock Nights
-              </button>
+              <div class="drawer-footer block-actions">
+                <button
+                  mat-stroked-button
+                  color="warn"
+                  type="button"
+                  (click)="submitUnblock()"
+                  [disabled]="blockForm.invalid || isLoading"
+                >
+                  <mat-icon>lock_open</mat-icon> Unblock Nights
+                </button>
 
-              <button
-                mat-raised-button
-                color="warn"
-                type="button"
-                (click)="submitBlock()"
-                [disabled]="blockForm.invalid || isLoading"
-              >
-                <mat-icon>block</mat-icon> Block Dates
-              </button>
-            </div>
-          </form>
+                <button
+                  mat-raised-button
+                  color="warn"
+                  type="button"
+                  (click)="submitBlock()"
+                  [disabled]="blockForm.invalid || isLoading"
+                >
+                  <mat-icon>block</mat-icon> Block Dates
+                </button>
+              </div>
+            </form>
+          </div>
         </mat-tab>
       </mat-tab-group>
     </aside>
@@ -254,7 +332,7 @@ import { DrawerState } from '../../../stores/calendar.store';
         position: fixed;
         top: 0;
         right: -480px;
-        width: 440px;
+        width: 460px;
         max-width: 100vw;
         height: 100vh;
         background: #ffffff;
@@ -335,6 +413,7 @@ import { DrawerState } from '../../../stores/calendar.store';
         flex: 1;
         display: flex;
         flex-direction: column;
+        overflow-y: auto;
       }
 
       ::ng-deep .custom-tabs .mat-mdc-tab-header {
@@ -351,8 +430,89 @@ import { DrawerState } from '../../../stores/calendar.store';
         padding: var(--space-lg);
         display: flex;
         flex-direction: column;
-        height: 100%;
+        gap: var(--space-lg);
+      }
+
+      /* Read-Only Details Cards */
+      .existing-cards-section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+      }
+
+      .section-heading {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-main);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .detail-card {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: var(--space-md);
+        background: var(--surface-bg);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+      }
+
+      .detail-card.booking-card {
+        border-left: 4px solid var(--danger);
+      }
+
+      .detail-card.block-card {
+        border-left: 4px solid var(--blocked);
+      }
+
+      .card-header {
+        display: flex;
+        align-items: center;
         justify-content: space-between;
+      }
+
+      .card-title {
+        font-weight: 700;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .inline-icon {
+        font-size: 18px !important;
+        width: 18px !important;
+        height: 18px !important;
+      }
+
+      .badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-transform: uppercase;
+      }
+
+      .source-badge {
+        background: var(--primary-light);
+        color: var(--primary-text);
+      }
+
+      .block-badge {
+        background: var(--blocked-light);
+        color: var(--blocked-text);
+      }
+
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+
+      .info-row strong {
+        color: var(--text-main);
       }
 
       .form-section {
@@ -378,7 +538,6 @@ import { DrawerState } from '../../../stores/calendar.store';
         font-weight: 700;
         font-size: 1rem;
         color: var(--text-main);
-
       }
 
       .field-icon {
@@ -417,7 +576,7 @@ import { DrawerState } from '../../../stores/calendar.store';
         align-items: center;
         justify-content: flex-end;
         gap: var(--space-md);
-        padding-top: var(--space-lg);
+        padding-top: var(--space-md);
         border-top: 1px solid var(--border-color);
       }
 
@@ -441,6 +600,7 @@ export class ActionDrawerComponent implements OnChanges {
   @Input() dateRangeText: string = '';
   @Input() errorMessage: string | null = null;
   @Input() isLoading: boolean = false;
+  @Input() existingReservations: UnitReservation[] = [];
 
   @Output() onClose = new EventEmitter<void>();
   @Output() onCreateBooking = new EventEmitter<{
@@ -448,6 +608,7 @@ export class ActionDrawerComponent implements OnChanges {
     checkIn: string;
     checkOut: string;
   }>();
+  @Output() onCancelBooking = new EventEmitter<string>();
   @Output() onSetPrice = new EventEmitter<{
     startDate: string;
     endDate: string;
@@ -482,6 +643,14 @@ export class ActionDrawerComponent implements OnChanges {
     endDate: ['', Validators.required],
     reason: ['Owner Block'],
   });
+
+  get activeBookings(): UnitReservation[] {
+    return this.existingReservations.filter((r) => r.type === 'BOOKING');
+  }
+
+  get activeBlocks(): UnitReservation[] {
+    return this.existingReservations.filter((r) => r.type === 'BLOCK');
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['dateRange'] && this.dateRange.start) {

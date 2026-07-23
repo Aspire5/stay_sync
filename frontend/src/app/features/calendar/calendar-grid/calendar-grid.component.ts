@@ -34,11 +34,20 @@ import { CalendarDay } from '../../../models/calendar.model';
           }"
           (click)="onDayClick.emit(day.date)"
         >
-          <!-- Top Row: Date Number & Price Tag -->
+          <!-- Top Row: Date Number, Unit Counter, & Price Tag -->
           <div class="cell-top">
-            <span class="day-number" [class.today-badge]="day.isToday">
-              {{ day.dayNumber }}
-            </span>
+            <div class="number-and-units">
+              <span class="day-number" [class.today-badge]="day.isToday">
+                {{ day.dayNumber }}
+              </span>
+              <span
+                class="unit-badge"
+                [class.all-booked]="day.availableUnits === 0"
+                title="{{ day.bookedUnits }}/{{ day.totalUnits }} units booked"
+              >
+                {{ day.availableUnits > 0 ? day.availableUnits + ' Avail' : '1/1 Booked' }}
+              </span>
+            </div>
 
             <span
               class="price-badge"
@@ -50,7 +59,7 @@ import { CalendarDay } from '../../../models/calendar.model';
             </span>
           </div>
 
-          <!-- Cell Body: Status & Guest Info -->
+          <!-- Cell Body: Status Pill & Guest Info -->
           <div class="cell-body">
             <ng-container [ngSwitch]="day.status">
               <div *ngSwitchCase="'BOOKED'" class="status-pill booked">
@@ -110,9 +119,10 @@ import { CalendarDay } from '../../../models/calendar.model';
         gap: 1px;
       }
 
+      /* Base Day Cell */
       .day-cell {
         background: #ffffff;
-        min-height: 105px;
+        min-height: 110px;
         padding: 8px 10px;
         display: flex;
         flex-direction: column;
@@ -124,34 +134,40 @@ import { CalendarDay } from '../../../models/calendar.model';
       }
 
       .day-cell:hover {
-        background: #f1f5f9;
+        opacity: 0.92;
         z-index: 2;
       }
 
       .day-cell.other-month {
-        background: #f8fafc;
-        opacity: 0.55;
+        opacity: 0.45;
+      }
+
+      /* Full Box Background Color for Booked State */
+      .day-cell.status-booked {
+        background-color: #fee2e2 !important;
+        border-left: 3.5px solid var(--danger) !important;
+      }
+
+      /* Full Box Background Color for Blocked State */
+      .day-cell.status-blocked {
+        background-color: #f1f5f9 !important;
+        border-left: 3.5px solid var(--blocked) !important;
+        background-image: repeating-linear-gradient(
+          -45deg,
+          transparent,
+          transparent 8px,
+          rgba(0, 0, 0, 0.02) 8px,
+          rgba(0, 0, 0, 0.02) 16px
+        );
       }
 
       /* Selection & Range Highlights */
       .day-cell.selected {
-        background: var(--primary-light) !important;
+        outline: 2px solid var(--primary);
       }
 
       .day-cell.in-range {
-        background: #eef2ff !important;
-      }
-
-      .day-cell.range-start {
-        border-top-left-radius: var(--radius-md);
-        border-bottom-left-radius: var(--radius-md);
-        outline: 2px solid var(--primary);
-      }
-
-      .day-cell.range-end {
-        border-top-right-radius: var(--radius-md);
-        border-bottom-right-radius: var(--radius-md);
-        outline: 2px solid var(--primary);
+        box-shadow: inset 0 0 0 1px var(--primary);
       }
 
       .day-cell.today {
@@ -165,9 +181,15 @@ import { CalendarDay } from '../../../models/calendar.model';
         justify-content: space-between;
       }
 
+      .number-and-units {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
       .day-number {
         font-size: 0.95rem;
-        font-weight: 600;
+        font-weight: 700;
         color: var(--text-main);
         width: 26px;
         height: 26px;
@@ -182,16 +204,31 @@ import { CalendarDay } from '../../../models/calendar.model';
         color: #ffffff;
       }
 
+      .unit-badge {
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: #047857;
+        background: #d1fae5;
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+
+      .unit-badge.all-booked {
+        background: #fecdd3;
+        color: #9f1239;
+      }
+
       .price-badge {
         font-size: 0.78rem;
         font-weight: 600;
         color: var(--text-muted);
-        background: var(--surface-bg);
+        background: rgba(255, 255, 255, 0.85);
         padding: 2px 6px;
         border-radius: var(--radius-sm);
         display: flex;
         align-items: center;
         gap: 3px;
+        border: 1px solid rgba(0, 0, 0, 0.06);
       }
 
       .price-badge.price-override {
@@ -224,22 +261,17 @@ import { CalendarDay } from '../../../models/calendar.model';
       }
 
       .status-pill.booked {
-        background: var(--danger-light);
+        background: #ffffff;
         color: var(--danger-text);
         border: 1px solid #fca5a5;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
       }
 
       .status-pill.blocked {
-        background: var(--blocked-light);
+        background: #ffffff;
         color: var(--blocked-text);
         border: 1px solid #cbd5e1;
-        background-image: repeating-linear-gradient(
-          -45deg,
-          transparent,
-          transparent 5px,
-          rgba(0, 0, 0, 0.04) 5px,
-          rgba(0, 0, 0, 0.04) 10px
-        );
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
       }
 
       .status-pill.available {

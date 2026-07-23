@@ -22,6 +22,7 @@ export class CalendarMockService {
     name: 'Seaside Cottage',
     ownerName: 'PropertyFlow',
     baseRate: 120,
+    totalUnits: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -137,9 +138,6 @@ export class CalendarMockService {
     return of([...this.priceOverrides]).pipe(delay(150));
   }
 
-  /**
-   * Generates calendar grid for a given year and month (0-indexed month)
-   */
   getCalendarDays(year: number, month: number): Observable<CalendarDay[]> {
     const todayStr = this.formatDateIso(new Date());
     const days: CalendarDay[] = [];
@@ -147,11 +145,9 @@ export class CalendarMockService {
     const firstDayOfMonth = new Date(year, month, 1);
     const lastDayOfMonth = new Date(year, month + 1, 0);
 
-    // Monday-first grid padding: 0 = Mon, ..., 6 = Sun
     let startDayOfWeek = firstDayOfMonth.getDay() - 1;
     if (startDayOfWeek === -1) startDayOfWeek = 6;
 
-    // Previous month padding
     const prevMonthLastDay = new Date(year, month, 0).getDate();
     for (let i = startDayOfWeek - 1; i >= 0; i--) {
       const pDate = new Date(year, month - 1, prevMonthLastDay - i);
@@ -159,14 +155,12 @@ export class CalendarMockService {
       days.push(this.buildCalendarDay(dateStr, pDate.getDate(), false, todayStr));
     }
 
-    // Current month days
     for (let d = 1; d <= lastDayOfMonth.getDate(); d++) {
       const cDate = new Date(year, month, d);
       const dateStr = this.formatDateIso(cDate);
       days.push(this.buildCalendarDay(dateStr, d, true, todayStr));
     }
 
-    // Next month padding (bring total days to 35 or 42)
     const remainingDays = 42 - days.length;
     for (let n = 1; n <= remainingDays; n++) {
       const nDate = new Date(year, month + 1, n);
@@ -177,11 +171,6 @@ export class CalendarMockService {
     return of(days).pipe(delay(200));
   }
 
-  /**
-   * Exclusive Check-Out Overlap Validation:
-   * Two date ranges [A_start, A_end) and [B_start, B_end) overlap IF AND ONLY IF:
-   * A_start < B_end AND A_end > B_start
-   */
   private checkOverlap(
     checkIn1: string,
     checkOut1: string,
@@ -203,7 +192,6 @@ export class CalendarMockService {
       }).pipe(delay(150));
     }
 
-    // Check for overlap against all active reservations (Bookings & Blocks)
     const conflictingRes = this.reservations.find(
       (r) =>
         r.status === 'ACTIVE' &&
@@ -235,6 +223,13 @@ export class CalendarMockService {
     this.reservations.push(newRes);
 
     return of({ success: true, reservation: newRes }).pipe(delay(200));
+  }
+
+  cancelReservation(id: string): Observable<{ success: boolean }> {
+    this.reservations = this.reservations.map((r) =>
+      r.id === id ? { ...r, status: 'CANCELLED' } : r
+    );
+    return of({ success: true }).pipe(delay(200));
   }
 
   setPriceOverride(
@@ -271,7 +266,6 @@ export class CalendarMockService {
     endDate: string,
     reason: string = 'Property Block'
   ): Observable<{ success: boolean; error?: string }> {
-    // Check overlap with active bookings
     const conflict = this.reservations.find(
       (r) =>
         r.status === 'ACTIVE' &&
@@ -303,7 +297,6 @@ export class CalendarMockService {
   }
 
   unblockDateRange(startDate: string, endDate: string): Observable<{ success: boolean }> {
-    // Deactivate block reservations overlapping [startDate, endDate)
     this.reservations = this.reservations.map((r) => {
       if (
         r.type === 'BLOCK' &&
@@ -328,7 +321,6 @@ export class CalendarMockService {
     const seenExternalIds = new Set<string>();
 
     for (const item of this.mockChannelFeed) {
-      // 1. Cancellation / Blank Guest handling
       if (!item.guest || item.guest === '—' || item.guest.trim() === '') {
         cancellationsProcessed++;
         details.push({
@@ -342,7 +334,6 @@ export class CalendarMockService {
         continue;
       }
 
-      // 2. Deduplication check (existing in DB or duplicate in feed batch)
       const existingInDb = this.reservations.find(
         (r) => r.externalId === item.id && r.status === 'ACTIVE'
       );
@@ -360,7 +351,6 @@ export class CalendarMockService {
         continue;
       }
 
-      // 3. Exclusive Check-out Overlap Validation
       const conflictingRes = this.reservations.find(
         (r) =>
           r.status === 'ACTIVE' &&
@@ -380,7 +370,6 @@ export class CalendarMockService {
         continue;
       }
 
-      // 4. Valid Import
       seenExternalIds.add(item.id);
       importedCount++;
       const importedRes: UnitReservation = {
@@ -425,18 +414,21 @@ export class CalendarMockService {
     isCurrentMonth: boolean,
     todayStr: string
   ): CalendarDay {
-    // Check if there's an override rate for this date
     const override = this.priceOverrides.find((p) => p.date === dateStr);
     const price = override ? override.price : this.property.baseRate;
 
-    // Check for active reservation on this date (exclusive checkout rule: checkIn <= dateStr < checkOut)
-    const activeRes = this.reservations.find(
+    const activeReservations = this.reservations.filter(
       (r) => r.status === 'ACTIVE' && r.checkIn <= dateStr && dateStr < r.checkOut
     );
 
+    const totalUnits = this.property.totalUnits || 1;
+    const bookedUnits = activeReservations.length;
+    const availableUnits = Math.max(0, totalUnits - bookedUnits);
+
     let status: CalendarDayStatus = 'AVAILABLE';
-    if (activeRes) {
-      status = activeRes.type === 'BLOCK' ? 'BLOCKED' : 'BOOKED';
+    if (activeReservations.length > 0) {
+      const firstRes = activeReservations[0];
+      status = firstRes.type === 'BLOCK' ? 'BLOCKED' : 'BOOKED';
     }
 
     return {
@@ -451,7 +443,11 @@ export class CalendarMockService {
       price,
       hasPriceOverride: !!override,
       status,
-      reservation: activeRes,
+      totalUnits,
+      bookedUnits,
+      availableUnits,
+      reservation: activeReservations[0],
+      reservations: activeReservations,
       priceOverride: override,
     };
   }

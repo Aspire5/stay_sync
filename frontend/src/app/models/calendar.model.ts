@@ -8,7 +8,8 @@ export interface Property {
   id: string;
   name: string;
   ownerName: string;
-  baseRate: number; // in £ (GBP) or base integer
+  baseRate: number; // in £ (GBP)
+  totalUnits?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,7 +58,11 @@ export interface CalendarDay {
   price: number;
   hasPriceOverride: boolean;
   status: CalendarDayStatus;
+  totalUnits: number;
+  bookedUnits: number;
+  availableUnits: number;
   reservation?: UnitReservation;
+  reservations?: UnitReservation[];
   priceOverride?: UnitPriceOverride;
 }
 

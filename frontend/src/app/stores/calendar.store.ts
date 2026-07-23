@@ -5,6 +5,7 @@ import {
   ImportSummary,
   Property,
   Unit,
+  UnitReservation,
 } from '../models/calendar.model';
 import { CalendarMockService } from '../services/calendar-mock.service';
 
@@ -62,6 +63,27 @@ export class CalendarStore {
     return days.filter((d) => d.date >= start && d.date <= effectiveEnd);
   });
 
+  /**
+   * Returns unique active reservations overlapping the selected date range
+   */
+  readonly selectedReservations = computed(() => {
+    const { start, end } = this.selectedRange();
+    if (!start) return [];
+    const effectiveEnd = end || start;
+
+    const resMap = new Map<string, UnitReservation>();
+    for (const day of this.calendarDays()) {
+      if (day.date >= start && day.date <= effectiveEnd && day.reservations) {
+        for (const res of day.reservations) {
+          if (res.status === 'ACTIVE') {
+            resMap.set(res.id, res);
+          }
+        }
+      }
+    }
+    return Array.from(resMap.values());
+  });
+
   constructor() {
     this.initStore();
   }
@@ -109,15 +131,12 @@ export class CalendarStore {
     const { start, end } = this.selectedRange();
 
     if (!start || (start && end)) {
-      // First click: select start date
       this.selectedRange.set({ start: dateStr, end: null });
       this.activeDrawer.set('actions');
     } else {
-      // Second click: select end date
       if (dateStr >= start) {
         this.selectedRange.set({ start, end: dateStr });
       } else {
-        // Clicked an earlier date, reset start date
         this.selectedRange.set({ start: dateStr, end: start });
       }
       this.activeDrawer.set('actions');
@@ -159,6 +178,22 @@ export class CalendarStore {
         this.refreshCalendar();
       } else {
         this.errorMessage.set(res.error || 'Failed to create booking.');
+      }
+    });
+  }
+
+  cancelBooking(id: string): void {
+    this.isLoading.set(true);
+    this.errorMessage.set(null);
+
+    this.mockService.cancelReservation(id).subscribe((res) => {
+      this.isLoading.set(false);
+      if (res.success) {
+        this.showToast('Reservation cancelled successfully.', 'info');
+        this.clearSelection();
+        this.refreshCalendar();
+      } else {
+        this.errorMessage.set('Failed to cancel reservation.');
       }
     });
   }
