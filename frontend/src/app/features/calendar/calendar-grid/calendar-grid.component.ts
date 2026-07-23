@@ -34,7 +34,7 @@ import { CalendarDay } from '../../../models/calendar.model';
           }"
           (click)="onDayClick.emit(day.date)"
         >
-          <!-- Top Row: Date Number & Badges -->
+          <!-- Top Row: Date Number & Price Tag -->
           <div class="cell-top">
             <span class="day-number" [class.today-badge]="day.isToday">
               {{ day.dayNumber }}
@@ -50,22 +50,22 @@ import { CalendarDay } from '../../../models/calendar.model';
             </span>
           </div>
 
-          <!-- Middle / Bottom Content: Status & Guest Info -->
+          <!-- Cell Body: Status & Guest Info -->
           <div class="cell-body">
             <ng-container [ngSwitch]="day.status">
-              <div *ngSwitchCase="'BOOKED'" class="status-content booked">
+              <div *ngSwitchCase="'BOOKED'" class="status-pill booked">
                 <mat-icon class="status-icon">person</mat-icon>
                 <span class="guest-name" title="{{ day.reservation?.guestName }}">
                   {{ day.reservation?.guestName || 'Booked' }}
                 </span>
               </div>
 
-              <div *ngSwitchCase="'BLOCKED'" class="status-content blocked">
+              <div *ngSwitchCase="'BLOCKED'" class="status-pill blocked">
                 <mat-icon class="status-icon">block</mat-icon>
                 <span class="blocked-label">Blocked</span>
               </div>
 
-              <div *ngSwitchCase="'AVAILABLE'" class="status-content available">
+              <div *ngSwitchCase="'AVAILABLE'" class="status-pill available">
                 <span class="available-dot"></span>
                 <span class="available-label">Available</span>
               </div>
@@ -130,10 +130,10 @@ import { CalendarDay } from '../../../models/calendar.model';
 
       .day-cell.other-month {
         background: #f8fafc;
-        opacity: 0.5;
+        opacity: 0.55;
       }
 
-      /* Selection & Range Styles */
+      /* Selection & Range Highlights */
       .day-cell.selected {
         background: var(--primary-light) !important;
       }
@@ -207,28 +207,29 @@ import { CalendarDay } from '../../../models/calendar.model';
         background: var(--warning);
       }
 
-      /* Cell Body & Status Badges */
+      /* Cell Body & Status Pills */
       .cell-body {
         margin-top: 6px;
       }
 
-      .status-content {
-        display: flex;
+      .status-pill {
+        display: inline-flex;
         align-items: center;
-        gap: 4px;
-        padding: 4px 6px;
+        gap: 5px;
+        padding: 4px 8px;
         border-radius: var(--radius-sm);
         font-size: 0.78rem;
-        font-weight: 500;
+        font-weight: 600;
+        width: 100%;
       }
 
-      .status-content.booked {
+      .status-pill.booked {
         background: var(--danger-light);
         color: var(--danger-text);
         border: 1px solid #fca5a5;
       }
 
-      .status-content.blocked {
+      .status-pill.blocked {
         background: var(--blocked-light);
         color: var(--blocked-text);
         border: 1px solid #cbd5e1;
@@ -236,12 +237,12 @@ import { CalendarDay } from '../../../models/calendar.model';
           -45deg,
           transparent,
           transparent 5px,
-          rgba(0, 0, 0, 0.03) 5px,
-          rgba(0, 0, 0, 0.03) 10px
+          rgba(0, 0, 0, 0.04) 5px,
+          rgba(0, 0, 0, 0.04) 10px
         );
       }
 
-      .status-content.available {
+      .status-pill.available {
         color: var(--success-text);
       }
 
@@ -255,6 +256,7 @@ import { CalendarDay } from '../../../models/calendar.model';
       .available-label {
         font-size: 0.75rem;
         color: var(--text-muted);
+        font-weight: 500;
       }
 
       .guest-name {
@@ -265,9 +267,10 @@ import { CalendarDay } from '../../../models/calendar.model';
       }
 
       .status-icon {
-        font-size: 14px;
-        width: 14px;
-        height: 14px;
+        font-size: 16px !important;
+        width: 16px !important;
+        height: 16px !important;
+        line-height: 16px !important;
       }
     `,
   ],

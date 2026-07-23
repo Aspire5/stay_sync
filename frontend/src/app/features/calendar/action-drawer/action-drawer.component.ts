@@ -43,14 +43,14 @@ import { DrawerState } from '../../../stores/calendar.store';
         <div>
           <h2 class="drawer-title">Manage Selected Dates</h2>
           <p class="drawer-subtitle">
-            {{ dateRangeText }}
+            <span>{{ dateRangeText }}</span>
             <span *ngIf="nightsCount > 0" class="nights-badge">
               {{ nightsCount }} {{ nightsCount === 1 ? 'night' : 'nights' }}
             </span>
           </p>
         </div>
 
-        <button mat-icon-button (click)="onClose.emit()">
+        <button mat-icon-button (click)="onClose.emit()" title="Close Drawer">
           <mat-icon>close</mat-icon>
         </button>
       </div>
@@ -69,6 +69,7 @@ import { DrawerState } from '../../../stores/calendar.store';
         [selectedIndex]="activeTabIndex"
         (selectedIndexChange)="onTabChange($event)"
         class="custom-tabs"
+        mat-stretch-tabs="false"
       >
         <!-- Tab 1: Create Booking -->
         <mat-tab label="New Booking">
@@ -82,6 +83,7 @@ import { DrawerState } from '../../../stores/calendar.store';
                   placeholder="e.g. Sarah Connor"
                   required
                 />
+                <mat-icon matSuffix class="field-icon">person_outline</mat-icon>
                 <mat-error *ngIf="bookingForm.get('guestName')?.hasError('required')">
                   Guest name is required
                 </mat-error>
@@ -101,11 +103,11 @@ import { DrawerState } from '../../../stores/calendar.store';
 
               <div class="summary-box">
                 <div class="summary-row">
-                  <span>Convention:</span>
+                  <span>Checkout Rule:</span>
                   <strong>Exclusive Check-out</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Guest departs on:</span>
+                  <span>Guest departs:</span>
                   <strong>{{ bookingForm.value.checkOut || 'Selected Date' }} morning</strong>
                 </div>
               </div>
@@ -120,6 +122,7 @@ import { DrawerState } from '../../../stores/calendar.store';
                 color="primary"
                 type="submit"
                 [disabled]="bookingForm.invalid || isLoading"
+                class="primary-submit-btn"
               >
                 Confirm Booking
               </button>
@@ -143,17 +146,17 @@ import { DrawerState } from '../../../stores/calendar.store';
                 </mat-form-field>
               </div>
 
-              <mat-form-field appearance="outline" class="full-width">
+              <mat-form-field appearance="outline" class="full-width price-field">
                 <mat-label>Nightly Rate (£ GBP)</mat-label>
+                <span matTextPrefix class="currency-prefix">£&nbsp;</span>
                 <input
                   matInput
                   type="number"
                   formControlName="price"
-                  placeholder="e.g. 150"
+                  placeholder="150"
                   min="1"
                   required
                 />
-                <span matPrefix>£&nbsp;</span>
                 <mat-error *ngIf="pricingForm.get('price')?.hasError('min')">
                   Price must be greater than £0
                 </mat-error>
@@ -169,6 +172,7 @@ import { DrawerState } from '../../../stores/calendar.store';
                 color="primary"
                 type="submit"
                 [disabled]="pricingForm.invalid || isLoading"
+                class="primary-submit-btn"
               >
                 Apply Custom Rate
               </button>
@@ -178,22 +182,33 @@ import { DrawerState } from '../../../stores/calendar.store';
 
         <!-- Tab 3: Block / Unblock Range -->
         <mat-tab label="Block / Unblock">
-          <div class="drawer-form">
+          <form [formGroup]="blockForm" class="drawer-form">
             <div class="form-section">
               <p class="section-desc">
-                Block this date range to prevent manual or channel bookings (e.g. maintenance or owner stay).
+                Select a single date or date range to block nights or release existing blocks.
               </p>
 
-              <form [formGroup]="blockForm">
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Block Reason / Note</mat-label>
-                  <input
-                    matInput
-                    formControlName="reason"
-                    placeholder="e.g. Maintenance & Renovations"
-                  />
+              <div class="date-row">
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>Start Date</mat-label>
+                  <input matInput type="date" formControlName="startDate" required />
                 </mat-form-field>
-              </form>
+
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>End Date</mat-label>
+                  <input matInput type="date" formControlName="endDate" required />
+                </mat-form-field>
+              </div>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Block Reason / Note</mat-label>
+                <input
+                  matInput
+                  formControlName="reason"
+                  placeholder="e.g. Maintenance & Renovations"
+                />
+                <mat-icon matSuffix class="field-icon">sticky_note_2</mat-icon>
+              </mat-form-field>
             </div>
 
             <div class="drawer-footer block-actions">
@@ -202,7 +217,7 @@ import { DrawerState } from '../../../stores/calendar.store';
                 color="warn"
                 type="button"
                 (click)="submitUnblock()"
-                [disabled]="isLoading"
+                [disabled]="blockForm.invalid || isLoading"
               >
                 <mat-icon>lock_open</mat-icon> Unblock Nights
               </button>
@@ -212,12 +227,12 @@ import { DrawerState } from '../../../stores/calendar.store';
                 color="warn"
                 type="button"
                 (click)="submitBlock()"
-                [disabled]="isLoading"
+                [disabled]="blockForm.invalid || isLoading"
               >
                 <mat-icon>block</mat-icon> Block Dates
               </button>
             </div>
-          </div>
+          </form>
         </mat-tab>
       </mat-tab-group>
     </aside>
@@ -322,6 +337,16 @@ import { DrawerState } from '../../../stores/calendar.store';
         flex-direction: column;
       }
 
+      ::ng-deep .custom-tabs .mat-mdc-tab-header {
+        border-bottom: 1px solid var(--border-color);
+        background: #ffffff;
+      }
+
+      ::ng-deep .custom-tabs .mat-mdc-tab .mdc-tab__text-label {
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+      }
+
       .drawer-form {
         padding: var(--space-lg);
         display: flex;
@@ -347,6 +372,17 @@ import { DrawerState } from '../../../stores/calendar.store';
 
       .half-width {
         flex: 1;
+      }
+
+      .currency-prefix {
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--text-main);
+
+      }
+
+      .field-icon {
+        color: var(--text-muted);
       }
 
       .summary-box {
@@ -383,6 +419,11 @@ import { DrawerState } from '../../../stores/calendar.store';
         gap: var(--space-md);
         padding-top: var(--space-lg);
         border-top: 1px solid var(--border-color);
+      }
+
+      .primary-submit-btn {
+        background-color: var(--primary) !important;
+        font-weight: 600 !important;
       }
 
       .block-actions {
@@ -437,6 +478,8 @@ export class ActionDrawerComponent implements OnChanges {
   });
 
   blockForm: FormGroup = this.fb.group({
+    startDate: ['', Validators.required],
+    endDate: ['', Validators.required],
     reason: ['Owner Block'],
   });
 
@@ -447,6 +490,7 @@ export class ActionDrawerComponent implements OnChanges {
 
       this.bookingForm.patchValue({ checkIn: start, checkOut: end });
       this.pricingForm.patchValue({ startDate: start, endDate: this.dateRange.end || start });
+      this.blockForm.patchValue({ startDate: start, endDate: end });
     }
 
     if (changes['activeDrawer']) {
@@ -483,20 +527,19 @@ export class ActionDrawerComponent implements OnChanges {
   }
 
   submitBlock(): void {
-    const start = this.bookingForm.value.checkIn || this.dateRange.start;
-    const end = this.bookingForm.value.checkOut || this.dateRange.end || start;
-    const reason = this.blockForm.value.reason || 'Maintenance';
-    if (start && end) {
-      this.onBlockDates.emit({ startDate: start, endDate: end, reason });
-    }
+    if (this.blockForm.invalid) return;
+    const { startDate, endDate, reason } = this.blockForm.value;
+    this.onBlockDates.emit({
+      startDate,
+      endDate,
+      reason: reason || 'Owner Block',
+    });
   }
 
   submitUnblock(): void {
-    const start = this.bookingForm.value.checkIn || this.dateRange.start;
-    const end = this.bookingForm.value.checkOut || this.dateRange.end || start;
-    if (start && end) {
-      this.onUnblockDates.emit({ startDate: start, endDate: end });
-    }
+    if (this.blockForm.invalid) return;
+    const { startDate, endDate } = this.blockForm.value;
+    this.onUnblockDates.emit({ startDate, endDate });
   }
 
   private addDays(isoStr: string, days: number): string {
