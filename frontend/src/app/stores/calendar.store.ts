@@ -7,7 +7,7 @@ import {
   Unit,
   UnitReservation,
 } from '../models/calendar.model';
-import { CalendarMockService } from '../services/calendar-mock.service';
+import { CalendarHttpService } from '../services/calendar-http.service';
 
 export type DrawerState = 'none' | 'actions' | 'booking' | 'pricing' | 'block';
 
@@ -15,7 +15,7 @@ export type DrawerState = 'none' | 'actions' | 'booking' | 'pricing' | 'block';
   providedIn: 'root',
 })
 export class CalendarStore {
-  private mockService = inject(CalendarMockService);
+  private apiService = inject(CalendarHttpService);
 
   private hasShownSelectionHint = false;
 
@@ -105,15 +105,15 @@ export class CalendarStore {
 
   initStore(): void {
     this.isLoading.set(true);
-    this.mockService.getProperty().subscribe((prop) => this.property.set(prop));
-    this.mockService.getUnit().subscribe((unit) => this.unit.set(unit));
+    this.apiService.getProperty().subscribe((prop) => this.property.set(prop));
+    this.apiService.getUnit().subscribe((unit) => this.unit.set(unit));
     this.refreshCalendar();
   }
 
   refreshCalendar(): void {
     this.isLoading.set(true);
     const month = this.currentMonth();
-    this.mockService
+    this.apiService
       .getCalendarDays(month.getFullYear(), month.getMonth())
       .subscribe((days) => {
         this.updateDaysWithSelection(days);
@@ -142,16 +142,10 @@ export class CalendarStore {
     this.refreshCalendar();
   }
 
-  /**
-   * Two-Step Range Selection Flow:
-   * 1st Click: Select Start Date -> Highlights date cell, keeps drawer closed, shows session hint.
-   * 2nd Click (on end date or same date): Completes selection -> OPENS drawer.
-   */
   handleDayClick(dateStr: string): void {
     const { start, end } = this.selectedRange();
 
     if (!start || (start && end)) {
-      // Step 1: Select Start Date (Do NOT open drawer on 1st click!)
       this.selectedRange.set({ start: dateStr, end: null });
       this.activeDrawer.set('none');
 
@@ -164,7 +158,6 @@ export class CalendarStore {
         this.hasShownSelectionHint = true;
       }
     } else {
-      // Step 2: Select End Date (or click same date again) -> Complete range & OPEN drawer!
       if (dateStr >= start) {
         this.selectedRange.set({ start, end: dateStr });
       } else {
@@ -201,7 +194,7 @@ export class CalendarStore {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this.mockService.createBooking(guestName, checkIn, checkOut).subscribe((res) => {
+    this.apiService.createBooking(guestName, checkIn, checkOut).subscribe((res) => {
       this.isLoading.set(false);
       if (res.success) {
         this.showToast(`Booking successfully created for ${guestName}!`, 'success');
@@ -217,7 +210,7 @@ export class CalendarStore {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this.mockService.cancelReservation(id).subscribe((res) => {
+    this.apiService.cancelReservation(id).subscribe((res) => {
       this.isLoading.set(false);
       if (res.success) {
         this.showToast('Reservation cancelled successfully.', 'info');
@@ -233,7 +226,7 @@ export class CalendarStore {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this.mockService.setPriceOverride(startDate, endDate, price).subscribe((res) => {
+    this.apiService.setPriceOverride(startDate, endDate, price).subscribe((res) => {
       this.isLoading.set(false);
       if (res.success) {
         this.showToast(`Nightly rate set to £${price} for selected range!`, 'success');
@@ -249,7 +242,7 @@ export class CalendarStore {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this.mockService.blockDateRange(startDate, endDate, reason).subscribe((res) => {
+    this.apiService.blockDateRange(startDate, endDate, reason).subscribe((res) => {
       this.isLoading.set(false);
       if (res.success) {
         this.showToast(`Dates blocked from ${startDate} to ${endDate}.`, 'info');
@@ -265,7 +258,7 @@ export class CalendarStore {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this.mockService.unblockDateRange(startDate, endDate).subscribe((res) => {
+    this.apiService.unblockDateRange(startDate, endDate).subscribe((res) => {
       this.isLoading.set(false);
       if (res.success) {
         this.showToast(`Blocked dates released successfully!`, 'success');
@@ -279,7 +272,7 @@ export class CalendarStore {
 
   importChannelFeed(onComplete?: (summary: ImportSummary) => void): void {
     this.isLoading.set(true);
-    this.mockService.importChannelFeed().subscribe((summary) => {
+    this.apiService.importChannelFeed().subscribe((summary) => {
       this.isLoading.set(false);
       this.lastImportSummary.set(summary);
       this.showToast(
