@@ -1,0 +1,20 @@
+{
+  "name": "staysync",
+  "version": "1.0.0",
+  "private": true,
+  "description": "StaySync - Availability & Pricing Manager Monorepo",
+  "scripts": {
+    "start:backend": "npm --prefix backend start",
+    "start:frontend": "npm --prefix frontend start",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev"
+  },
+  "keywords": [
+    "staysync",
+    "pms",
+    "availability-manager",
+    "pricing-manager"
+  ],
+  "author": "",
+  "license": "ISC"
+}
