@@ -110,10 +110,16 @@ import { DrawerState } from '../../../stores/calendar.store';
               </div>
             </div>
 
-            <!-- New Booking Form (If unit available or user adding booking) -->
-            <form [formGroup]="bookingForm" (ngSubmit)="submitBooking()" class="form-section">
-              <h3 class="section-heading" *ngIf="activeBookings.length > 0">
-                Create Additional Booking (If Unit Available)
+            <!-- Fully Booked Notice if 0 units available -->
+            <div *ngIf="availableUnits === 0 && activeBookings.length > 0" class="info-notice alert">
+              <mat-icon class="info-icon">info</mat-icon>
+              <span>Fully Booked — All units occupied for this date range.</span>
+            </div>
+
+            <!-- New Booking Form (Only if unit available) -->
+            <form *ngIf="availableUnits > 0" [formGroup]="bookingForm" (ngSubmit)="submitBooking()" class="form-section">
+              <h3 class="section-heading">
+                Create Booking ({{ availableUnits }} {{ availableUnits === 1 ? 'Unit' : 'Units' }} Available)
               </h3>
 
               <mat-form-field appearance="outline" class="full-width">
@@ -224,7 +230,7 @@ import { DrawerState } from '../../../stores/calendar.store';
         <!-- Tab 3: Block / Unblock Range -->
         <mat-tab label="Block / Unblock">
           <div class="drawer-form">
-            <!-- Active Blocks Read-Only Details Cards -->
+            <!-- STATE A: IF ALREADY BLOCKED -> Show ONLY Block Details Card & Unblock Button -->
             <div *ngIf="activeBlocks.length > 0" class="existing-cards-section">
               <h3 class="section-heading">Active Block Details</h3>
               <div *ngFor="let block of activeBlocks" class="detail-card block-card">
@@ -244,12 +250,12 @@ import { DrawerState } from '../../../stores/calendar.store';
                 </div>
                 <div class="card-actions">
                   <button
-                    mat-stroked-button
+                    mat-raised-button
                     color="warn"
                     type="button"
                     (click)="submitUnblock()"
                     [disabled]="isLoading"
-                    class="full-width"
+                    class="full-width primary-warn-btn"
                   >
                     <mat-icon>lock_open</mat-icon> Unblock Selected Nights
                   </button>
@@ -257,13 +263,11 @@ import { DrawerState } from '../../../stores/calendar.store';
               </div>
             </div>
 
-            <!-- Block Form (If unblocked) -->
-            <form [formGroup]="blockForm" class="form-section">
-              <h3 class="section-heading" *ngIf="activeBlocks.length > 0">
-                Block Additional Date Range
-              </h3>
-              <p class="section-desc" *ngIf="activeBlocks.length === 0">
-                Select a single date or date range to block nights or release existing blocks.
+            <!-- STATE B: IF UNBLOCKED -> Show ONLY Block Dates Form & Block Button -->
+            <form *ngIf="activeBlocks.length === 0" [formGroup]="blockForm" class="form-section">
+              <h3 class="section-heading">Block Date Range</h3>
+              <p class="section-desc">
+                Select a single date or date range to block nights from being booked.
               </p>
 
               <div class="date-row">
@@ -288,23 +292,14 @@ import { DrawerState } from '../../../stores/calendar.store';
                 <mat-icon matSuffix class="field-icon">sticky_note_2</mat-icon>
               </mat-form-field>
 
-              <div class="drawer-footer block-actions">
-                <button
-                  mat-stroked-button
-                  color="warn"
-                  type="button"
-                  (click)="submitUnblock()"
-                  [disabled]="blockForm.invalid || isLoading"
-                >
-                  <mat-icon>lock_open</mat-icon> Unblock Nights
-                </button>
-
+              <div class="drawer-footer single-action">
                 <button
                   mat-raised-button
                   color="warn"
                   type="button"
                   (click)="submitBlock()"
                   [disabled]="blockForm.invalid || isLoading"
+                  class="primary-warn-btn"
                 >
                   <mat-icon>block</mat-icon> Block Dates
                 </button>
@@ -433,7 +428,6 @@ import { DrawerState } from '../../../stores/calendar.store';
         gap: var(--space-lg);
       }
 
-      /* Read-Only Details Cards */
       .existing-cards-section {
         display: flex;
         flex-direction: column;
@@ -515,6 +509,26 @@ import { DrawerState } from '../../../stores/calendar.store';
         color: var(--text-main);
       }
 
+      .info-notice {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        padding: var(--space-md);
+        border-radius: var(--radius-md);
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
+      .info-notice.alert {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+      }
+
+      .info-icon {
+        font-size: 20px;
+      }
+
       .form-section {
         display: flex;
         flex-direction: column;
@@ -580,13 +594,19 @@ import { DrawerState } from '../../../stores/calendar.store';
         border-top: 1px solid var(--border-color);
       }
 
+      .drawer-footer.single-action {
+        justify-content: flex-end;
+      }
+
       .primary-submit-btn {
         background-color: var(--primary) !important;
         font-weight: 600 !important;
       }
 
-      .block-actions {
-        justify-content: space-between;
+      .primary-warn-btn {
+        background-color: var(--danger) !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
       }
     `,
   ],
@@ -601,6 +621,7 @@ export class ActionDrawerComponent implements OnChanges {
   @Input() errorMessage: string | null = null;
   @Input() isLoading: boolean = false;
   @Input() existingReservations: UnitReservation[] = [];
+  @Input() availableUnits: number = 1;
 
   @Output() onClose = new EventEmitter<void>();
   @Output() onCreateBooking = new EventEmitter<{

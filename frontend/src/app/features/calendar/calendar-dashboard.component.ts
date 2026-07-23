@@ -55,6 +55,7 @@ import { CalendarStore } from '../../stores/calendar.store';
         [errorMessage]="store.errorMessage()"
         [isLoading]="store.isLoading()"
         [existingReservations]="store.selectedReservations()"
+        [availableUnits]="store.selectedAvailableUnits()"
         (onClose)="store.closeDrawer()"
         (onCreateBooking)="handleCreateBooking($event)"
         (onCancelBooking)="handleCancelBooking($event)"

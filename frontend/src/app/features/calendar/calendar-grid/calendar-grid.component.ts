@@ -34,20 +34,11 @@ import { CalendarDay } from '../../../models/calendar.model';
           }"
           (click)="onDayClick.emit(day.date)"
         >
-          <!-- Top Row: Date Number, Unit Counter, & Price Tag -->
+          <!-- Top Row: Date Number & Price Tag -->
           <div class="cell-top">
-            <div class="number-and-units">
-              <span class="day-number" [class.today-badge]="day.isToday">
-                {{ day.dayNumber }}
-              </span>
-              <span
-                class="unit-badge"
-                [class.all-booked]="day.availableUnits === 0"
-                title="{{ day.bookedUnits }}/{{ day.totalUnits }} units booked"
-              >
-                {{ day.availableUnits > 0 ? day.availableUnits + ' Avail' : '1/1 Booked' }}
-              </span>
-            </div>
+            <span class="day-number" [class.today-badge]="day.isToday">
+              {{ day.dayNumber }}
+            </span>
 
             <span
               class="price-badge"
@@ -59,7 +50,7 @@ import { CalendarDay } from '../../../models/calendar.model';
             </span>
           </div>
 
-          <!-- Cell Body: Status Pill & Guest Info -->
+          <!-- Cell Body: Status Pill & Guest/Unit Info -->
           <div class="cell-body">
             <ng-container [ngSwitch]="day.status">
               <div *ngSwitchCase="'BOOKED'" class="status-pill booked">
@@ -76,7 +67,9 @@ import { CalendarDay } from '../../../models/calendar.model';
 
               <div *ngSwitchCase="'AVAILABLE'" class="status-pill available">
                 <span class="available-dot"></span>
-                <span class="available-label">Available</span>
+                <span class="available-label">
+                  {{ day.availableUnits }} {{ day.availableUnits === 1 ? 'Unit' : 'Units' }} Available
+                </span>
               </div>
             </ng-container>
           </div>
@@ -156,8 +149,8 @@ import { CalendarDay } from '../../../models/calendar.model';
           -45deg,
           transparent,
           transparent 8px,
-          rgba(0, 0, 0, 0.02) 8px,
-          rgba(0, 0, 0, 0.02) 16px
+          rgba(0, 0, 0, 0.04) 8px,
+          rgba(0, 0, 0, 0.04) 16px
         );
       }
 
@@ -181,12 +174,6 @@ import { CalendarDay } from '../../../models/calendar.model';
         justify-content: space-between;
       }
 
-      .number-and-units {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
       .day-number {
         font-size: 0.95rem;
         font-weight: 700;
@@ -202,20 +189,6 @@ import { CalendarDay } from '../../../models/calendar.model';
       .day-number.today-badge {
         background: var(--primary);
         color: #ffffff;
-      }
-
-      .unit-badge {
-        font-size: 0.68rem;
-        font-weight: 600;
-        color: #047857;
-        background: #d1fae5;
-        padding: 1px 5px;
-        border-radius: 4px;
-      }
-
-      .unit-badge.all-booked {
-        background: #fecdd3;
-        color: #9f1239;
       }
 
       .price-badge {

@@ -63,9 +63,6 @@ export class CalendarStore {
     return days.filter((d) => d.date >= start && d.date <= effectiveEnd);
   });
 
-  /**
-   * Returns unique active reservations overlapping the selected date range
-   */
   readonly selectedReservations = computed(() => {
     const { start, end } = this.selectedRange();
     if (!start) return [];
@@ -82,6 +79,22 @@ export class CalendarStore {
       }
     }
     return Array.from(resMap.values());
+  });
+
+  readonly selectedAvailableUnits = computed(() => {
+    const { start, end } = this.selectedRange();
+    if (!start) return 1;
+    const effectiveEnd = end || start;
+    let minAvail = this.property()?.totalUnits || 1;
+
+    for (const day of this.calendarDays()) {
+      if (day.date >= start && day.date <= effectiveEnd) {
+        if (day.availableUnits < minAvail) {
+          minAvail = day.availableUnits;
+        }
+      }
+    }
+    return minAvail;
   });
 
   constructor() {
