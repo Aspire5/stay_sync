@@ -19,7 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTabsModule } from '@angular/material/tabs';
-import { DateRangeSelection, UnitReservation } from '../../../models/calendar.model';
+import { CalendarDay, DateRangeSelection, UnitReservation } from '../../../models/calendar.model';
 import { DrawerState } from '../../../stores/calendar.store';
 
 @Component({
@@ -148,6 +148,7 @@ import { DrawerState } from '../../../stores/calendar.store';
                 </mat-form-field>
               </div>
 
+              <!-- Frontend Total Price & Stay Summary -->
               <div class="summary-box">
                 <div class="summary-row">
                   <span>Checkout Convention:</span>
@@ -156,6 +157,10 @@ import { DrawerState } from '../../../stores/calendar.store';
                 <div class="summary-row">
                   <span>Guest Departs:</span>
                   <strong>{{ bookingForm.value.checkOut || 'Selected Date' }} morning</strong>
+                </div>
+                <div class="summary-row total-price-row">
+                  <span>Calculated Stay Total:</span>
+                  <strong class="total-price-text">£{{ totalStayPrice }}</strong>
                 </div>
               </div>
 
@@ -193,19 +198,23 @@ import { DrawerState } from '../../../stores/calendar.store';
                 </mat-form-field>
               </div>
 
+              <!-- Integer-only Nightly Rate Input -->
               <mat-form-field appearance="outline" class="full-width price-field">
                 <mat-label>Nightly Rate (£ GBP)</mat-label>
                 <span matTextPrefix class="currency-prefix">£&nbsp;</span>
                 <input
                   matInput
                   type="number"
+                  step="1"
+                  pattern="[0-9]*"
+                  (keypress)="preventDecimal($event)"
                   formControlName="price"
                   placeholder="150"
                   min="1"
                   required
                 />
-                <mat-error *ngIf="pricingForm.get('price')?.hasError('min')">
-                  Price must be greater than £0
+                <mat-error *ngIf="pricingForm.get('price')?.hasError('pattern') || pricingForm.get('price')?.hasError('min')">
+                  Nightly rate must be a positive whole integer without decimals
                 </mat-error>
               </mat-form-field>
             </div>
@@ -566,7 +575,7 @@ import { DrawerState } from '../../../stores/calendar.store';
         font-size: 0.85rem;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
       }
 
       .summary-row {
@@ -577,6 +586,18 @@ import { DrawerState } from '../../../stores/calendar.store';
 
       .summary-row strong {
         color: var(--text-main);
+      }
+
+      .total-price-row {
+        border-top: 1px dashed var(--border-color);
+        padding-top: 8px;
+        margin-top: 2px;
+      }
+
+      .total-price-text {
+        font-size: 1.1rem;
+        color: var(--primary);
+        font-weight: 700;
       }
 
       .section-desc {
@@ -622,6 +643,7 @@ export class ActionDrawerComponent implements OnChanges {
   @Input() isLoading: boolean = false;
   @Input() existingReservations: UnitReservation[] = [];
   @Input() availableUnits: number = 1;
+  @Input() calendarDays: CalendarDay[] = [];
 
   @Output() onClose = new EventEmitter<void>();
   @Output() onCreateBooking = new EventEmitter<{
@@ -656,7 +678,7 @@ export class ActionDrawerComponent implements OnChanges {
   pricingForm: FormGroup = this.fb.group({
     startDate: ['', Validators.required],
     endDate: ['', Validators.required],
-    price: [150, [Validators.required, Validators.min(1)]],
+    price: [150, [Validators.required, Validators.min(1), Validators.pattern(/^[0-9]+$/)]],
   });
 
   blockForm: FormGroup = this.fb.group({
@@ -671,6 +693,35 @@ export class ActionDrawerComponent implements OnChanges {
 
   get activeBlocks(): UnitReservation[] {
     return this.existingReservations.filter((r) => r.type === 'BLOCK');
+  }
+
+  get totalStayPrice(): number {
+    const checkIn = this.bookingForm.value.checkIn || this.dateRange.start;
+    const checkOut = this.bookingForm.value.checkOut || this.dateRange.end;
+    if (!checkIn || !checkOut || checkIn >= checkOut) return 0;
+
+    const daysMap = new Map<string, number>();
+    for (const d of this.calendarDays) {
+      daysMap.set(d.date, d.price);
+    }
+
+    let total = 0;
+    const curr = new Date(checkIn);
+    const end = new Date(checkOut);
+
+    while (curr < end) {
+      const iso = curr.toISOString().split('T')[0];
+      const price = daysMap.get(iso) ?? 120;
+      total += price;
+      curr.setDate(curr.getDate() + 1);
+    }
+    return total;
+  }
+
+  preventDecimal(event: KeyboardEvent): void {
+    if (['.', ',', '-', 'e', 'E', '+'].includes(event.key)) {
+      event.preventDefault();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
