@@ -17,6 +17,8 @@ export type DrawerState = 'none' | 'actions' | 'booking' | 'pricing' | 'block';
 export class CalendarStore {
   private mockService = inject(CalendarMockService);
 
+  private hasShownSelectionHint = false;
+
   // State Signals
   readonly property = signal<Property | null>(null);
   readonly unit = signal<Unit | null>(null);
@@ -140,13 +142,29 @@ export class CalendarStore {
     this.refreshCalendar();
   }
 
+  /**
+   * Two-Step Range Selection Flow:
+   * 1st Click: Select Start Date -> Highlights date cell, keeps drawer closed, shows session hint.
+   * 2nd Click (on end date or same date): Completes selection -> OPENS drawer.
+   */
   handleDayClick(dateStr: string): void {
     const { start, end } = this.selectedRange();
 
     if (!start || (start && end)) {
+      // Step 1: Select Start Date (Do NOT open drawer on 1st click!)
       this.selectedRange.set({ start: dateStr, end: null });
-      this.activeDrawer.set('actions');
+      this.activeDrawer.set('none');
+
+      if (!this.hasShownSelectionHint) {
+        const formatted = this.formatDisplayDate(dateStr);
+        this.showToast(
+          `Start date ${formatted} selected. Click an end date (or click ${formatted} again) to manage.`,
+          'info'
+        );
+        this.hasShownSelectionHint = true;
+      }
     } else {
+      // Step 2: Select End Date (or click same date again) -> Complete range & OPEN drawer!
       if (dateStr >= start) {
         this.selectedRange.set({ start, end: dateStr });
       } else {

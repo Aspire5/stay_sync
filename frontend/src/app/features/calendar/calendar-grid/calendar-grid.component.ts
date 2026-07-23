@@ -27,7 +27,7 @@ import { CalendarDay } from '../../../models/calendar.model';
             'status-available': day.status === 'AVAILABLE',
             'status-booked': day.status === 'BOOKED',
             'status-blocked': day.status === 'BLOCKED',
-            'selected': day.isSelected,
+            'selected-single': day.isSelected && !day.isInRange,
             'range-start': day.isRangeStart,
             'range-end': day.isRangeEnd,
             'in-range': day.isInRange
@@ -50,7 +50,7 @@ import { CalendarDay } from '../../../models/calendar.model';
             </span>
           </div>
 
-          <!-- Cell Body: Status Pill & Guest/Unit Info -->
+          <!-- Cell Body: Status Pill & Unit Availability -->
           <div class="cell-body">
             <ng-container [ngSwitch]="day.status">
               <div *ngSwitchCase="'BOOKED'" class="status-pill booked">
@@ -82,7 +82,7 @@ import { CalendarDay } from '../../../models/calendar.model';
       .calendar-wrapper {
         background: var(--card-bg);
         border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
+        box-shadow: var(--shadow-md);
         border: 1px solid var(--border-color);
         overflow: hidden;
         margin: var(--space-md);
@@ -108,7 +108,7 @@ import { CalendarDay } from '../../../models/calendar.model';
       .days-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        background: var(--border-color);
+        background: #f1f5f9;
         gap: 1px;
       }
 
@@ -121,13 +121,13 @@ import { CalendarDay } from '../../../models/calendar.model';
         flex-direction: column;
         justify-content: space-between;
         cursor: pointer;
-        transition: var(--transition-fast);
+        transition: transform 0.1s ease, background-color 0.15s ease, box-shadow 0.15s ease;
         position: relative;
         user-select: none;
       }
 
       .day-cell:hover {
-        opacity: 0.92;
+        opacity: 0.95;
         z-index: 2;
       }
 
@@ -136,13 +136,13 @@ import { CalendarDay } from '../../../models/calendar.model';
       }
 
       /* Full Box Background Color for Booked State */
-      .day-cell.status-booked {
+      .day-cell.status-booked:not(.range-start):not(.range-end) {
         background-color: #fee2e2 !important;
         border-left: 3.5px solid var(--danger) !important;
       }
 
       /* Full Box Background Color for Blocked State */
-      .day-cell.status-blocked {
+      .day-cell.status-blocked:not(.range-start):not(.range-end) {
         background-color: #f1f5f9 !important;
         border-left: 3.5px solid var(--blocked) !important;
         background-image: repeating-linear-gradient(
@@ -154,13 +154,70 @@ import { CalendarDay } from '../../../models/calendar.model';
         );
       }
 
-      /* Selection & Range Highlights */
-      .day-cell.selected {
-        outline: 2px solid var(--primary);
+      /* Single Date Clicked Highlight Ring (No ugly box outlines) */
+      .day-cell.selected-single {
+        box-shadow: inset 0 0 0 2.5px var(--primary), var(--shadow-sm) !important;
+        border-radius: 10px;
+        transform: scale(0.98);
+        z-index: 3;
       }
 
-      .day-cell.in-range {
-        box-shadow: inset 0 0 0 1px var(--primary);
+      /* Continuous Range Ribbon Selection Styling */
+      .day-cell.in-range:not(.range-start):not(.range-end) {
+        background-color: #e0e7ff !important;
+        color: #3730a3 !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+
+      .day-cell.in-range:not(.range-start):not(.range-end) .day-number {
+        color: #3730a3 !important;
+      }
+
+      .day-cell.in-range:not(.range-start):not(.range-end) .available-label {
+        color: #4338ca !important;
+      }
+
+      .day-cell.range-start {
+        background-color: var(--primary) !important;
+        color: #ffffff !important;
+        border-top-left-radius: 12px !important;
+        border-bottom-left-radius: 12px !important;
+        box-shadow: var(--shadow-md) !important;
+        z-index: 3;
+      }
+
+      .day-cell.range-end {
+        background-color: var(--primary) !important;
+        color: #ffffff !important;
+        border-top-right-radius: 12px !important;
+        border-bottom-right-radius: 12px !important;
+        box-shadow: var(--shadow-md) !important;
+        z-index: 3;
+      }
+
+      /* Adapt Text and Badges on Range Start & End Caps */
+      .day-cell.range-start .day-number,
+      .day-cell.range-end .day-number {
+        color: #ffffff !important;
+      }
+
+      .day-cell.range-start .price-badge,
+      .day-cell.range-end .price-badge {
+        background: rgba(255, 255, 255, 0.25) !important;
+        color: #ffffff !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+      }
+
+      .day-cell.range-start .available-label,
+      .day-cell.range-end .available-label {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-weight: 600;
+      }
+
+      .day-cell.range-start .available-dot,
+      .day-cell.range-end .available-dot {
+        background: #ffffff !important;
       }
 
       .day-cell.today {
