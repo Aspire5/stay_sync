@@ -1,0 +1,87 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum ReservationType {
+  BOOKING
+  BLOCK
+}
+
+enum ReservationStatus {
+  ACTIVE
+  CANCELLED
+}
+
+enum ReservationSource {
+  MANUAL
+  CHANNEL
+}
+
+enum PriceOverrideSource {
+  MANUAL
+  DYNAMIC
+}
+
+model Property {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  ownerName String
+  baseRate  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  units Unit[]
+}
+
+model Unit {
+  id         String   @id @default(uuid()) @db.Uuid
+  propertyId String   @db.Uuid
+  name       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  property       Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  priceOverrides UnitPriceOverride[]
+  reservations   UnitReservation[]
+
+  @@index([propertyId])
+}
+
+model UnitPriceOverride {
+  id        String               @id @default(uuid()) @db.Uuid
+  unitId    String               @db.Uuid
+  date      DateTime             @db.Date
+  price     Int
+  source    PriceOverrideSource?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([unitId, date])
+  @@index([unitId, date])
+}
+
+model UnitReservation {
+  id         String            @id @default(uuid()) @db.Uuid
+  unitId     String            @db.Uuid
+  externalId String?
+  guestName  String
+  type       ReservationType
+  status     ReservationStatus
+  source     ReservationSource
+  checkIn    DateTime          @db.Date
+  checkOut   DateTime          @db.Date
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId, checkIn, checkOut])
+  @@index([externalId])
+}
